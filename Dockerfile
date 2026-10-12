@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # ---- Build stage ------------------------------------------------------------
-FROM rust:1.82-slim-bookworm AS builder
+FROM rust:1.91.1-slim-bookworm AS builder
 WORKDIR /app
 
 # Pre-build dependencies as a cacheable layer. TFHE-rs is large (5-10 min on a

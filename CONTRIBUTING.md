@@ -12,9 +12,11 @@ cd crypto-lab-blind-oracle-api
 cargo build
 ```
 
-> **Note:** `tfhe` is built with the `x86_64-unix` feature, so the crate targets
-> Linux/macOS on x86-64. On other platforms, build inside the provided Docker
-> image or dev container. The first build compiles TFHE-rs and takes 5–10 minutes.
+> **Note:** TFHE-rs 1.8 requires Rust 1.91.1 or newer. Its optional AVX-512
+> default is disabled so the service builds on both x86-64 Unix and Arm64
+> development hosts; a target-specific 0.8 dependency provides rolling-client
+> compatibility. The production Docker image remains Debian x86-64 on Render.
+> The first build compiles both runtimes and takes 5–10 minutes.
 
 ## Before opening a pull request
 

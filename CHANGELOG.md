@@ -20,6 +20,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `healthCheckPath` in `render.yaml`.
 
 ### Changed
+- Added the TFHE-rs 1.8.0 runtime with explicit per-request version selection,
+  while retaining a TFHE-rs 0.8 compatibility path for already-open browser
+  tabs. Raised the Rust/Docker toolchain floor to 1.91.1 and disabled 1.8's
+  optional AVX-512 default for portable Render and Arm64 builds.
 - The compute wire format now uses TFHE's versioned, size-limited safe
   serialization. Legacy raw-bincode requests remain accepted during the rolling
   browser upgrade, and responses preserve the request's format.

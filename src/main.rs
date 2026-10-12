@@ -148,6 +148,7 @@ async fn health() -> axum::Json<serde_json::Value> {
         "status": "ok",
         "scheme": "TFHE-rs",
         "fhe": true,
+        "tfheVersions": ["0.8", "1.8"],
         "bootstrapping": "gate_bootstrapping_per_operation",
         "expectedComputeMs": "100-2000",
         "serverKeyDeserializeMs": "1000-5000 (cached after first use)"
