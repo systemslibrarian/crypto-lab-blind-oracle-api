@@ -74,11 +74,16 @@ Homomorphic addition of two encrypted 8-bit integers.
 
 **Request body** (all fields base64-encoded):
 
-| Field       | Type   | Description                                              |
-| ----------- | ------ | -------------------------------------------------------- |
-| `serverKey` | string | bincode-serialized **compressed** `ServerKey`.           |
-| `ctA`       | string | bincode-serialized `FheUint8` ciphertext (operand A).    |
-| `ctB`       | string | bincode-serialized `FheUint8` ciphertext (operand B).    |
+| Field       | Type   | Description                                                              |
+| ----------- | ------ | ------------------------------------------------------------------------ |
+| `serverKey` | string | TFHE safe-serialized **compressed** `ServerKey`.                          |
+| `ctA`       | string | TFHE safe-serialized `FheUint8` ciphertext (operand A).                   |
+| `ctB`       | string | TFHE safe-serialized `FheUint8` ciphertext (operand B).                   |
+
+TFHE safe serialization adds type and version checks plus explicit size limits.
+The API temporarily accepts the former raw-bincode format as well so the browser
+and service can roll forward without an incompatible deployment window. A
+response always uses the same wire format as its request.
 
 ```jsonc
 // POST /compute/add
