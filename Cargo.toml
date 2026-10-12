@@ -2,7 +2,7 @@
 name = "blind-oracle-api"
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.82"
+rust-version = "1.91.1"
 description = "A blind FHE oracle: computes homomorphic addition on TFHE ciphertexts it can never decrypt."
 authors = ["Paul Clark"]
 license = "MIT"
@@ -12,7 +12,7 @@ keywords = ["fhe", "tfhe", "cryptography", "privacy", "post-quantum"]
 categories = ["cryptography", "web-programming::http-server"]
 
 [dependencies]
-tfhe = { version = "0.8", features = ["integer", "x86_64-unix"] }
+tfhe_18 = { package = "tfhe", version = "=1.8.0", default-features = false, features = ["integer"] }
 axum = { version = "0.7", features = ["json"] }
 tokio = { version = "1", features = ["full"] }
 tower = { version = "0.5", features = ["limit"] }
@@ -23,6 +23,15 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 base64 = "0.22"
 bincode = "1"
+
+# Keep the 0.8 runtime during the rolling browser deployment. Existing tabs
+# omit `tfheVersion` and must continue to receive 0.8 ciphertexts that their
+# client key can decrypt; 1.8 requests opt into the new runtime explicitly.
+[target.'cfg(target_arch = "x86_64")'.dependencies]
+tfhe_08 = { package = "tfhe", version = "=0.8.7", features = ["integer", "x86_64-unix"] }
+
+[target.'cfg(target_arch = "aarch64")'.dependencies]
+tfhe_08 = { package = "tfhe", version = "=0.8.7", features = ["integer", "aarch64-unix"] }
 
 [profile.release]
 # FHE workloads are CPU-bound; optimize aggressively for the deployed binary.

@@ -66,28 +66,30 @@ Service discovery. Returns the service name and available routes.
 Liveness/readiness probe. Cheap and side-effect free.
 
 ```json
-{ "status": "ok", "scheme": "TFHE-rs", "fhe": true, "bootstrapping": "gate_bootstrapping_per_operation" }
+{ "status": "ok", "scheme": "TFHE-rs", "fhe": true, "tfheVersions": ["0.8", "1.8"] }
 ```
 
 ### `POST /compute/add`
 Homomorphic addition of two encrypted 8-bit integers.
 
-**Request body** (all fields base64-encoded):
+**Request body** (`serverKey`, `ctA`, and `ctB` are base64-encoded):
 
-| Field       | Type   | Description                                                              |
-| ----------- | ------ | ------------------------------------------------------------------------ |
-| `serverKey` | string | TFHE safe-serialized **compressed** `ServerKey`.                          |
-| `ctA`       | string | TFHE safe-serialized `FheUint8` ciphertext (operand A).                   |
-| `ctB`       | string | TFHE safe-serialized `FheUint8` ciphertext (operand B).                   |
+| Field         | Type   | Description                                                            |
+| ------------- | ------ | ---------------------------------------------------------------------- |
+| `serverKey`   | string | TFHE safe-serialized **compressed** `ServerKey`.                        |
+| `ctA`         | string | TFHE safe-serialized `FheUint8` ciphertext (operand A).                 |
+| `ctB`         | string | TFHE safe-serialized `FheUint8` ciphertext (operand B).                 |
+| `tfheVersion` | string | Runtime/wire version: `"1.8"`; omitted requests use the 0.8 bridge.    |
 
 TFHE safe serialization adds type and version checks plus explicit size limits.
-The API temporarily accepts the former raw-bincode format as well so the browser
-and service can roll forward without an incompatible deployment window. A
-response always uses the same wire format as its request.
+TFHE 1.8 cannot deserialize 0.8 server keys, so requests explicitly select their
+matching runtime. The API temporarily retains its 0.8 safe and raw-bincode paths
+for already-open browser tabs; a response always uses the same TFHE and wire
+version as its request.
 
 ```jsonc
 // POST /compute/add
-{ "serverKey": "<base64>", "ctA": "<base64>", "ctB": "<base64>" }
+{ "serverKey": "<base64>", "ctA": "<base64>", "ctB": "<base64>", "tfheVersion": "1.8" }
 ```
 
 **Success — `200 OK`:**
@@ -98,7 +100,8 @@ response always uses the same wire format as its request.
   "operation": "tfhe_fhe_add",
   "plaintextAccessed": false,        // always false — the server cannot decrypt
   "scheme": "TFHE-rs",
-  "bootstrapping": "gate_bootstrapping_per_operation"
+  "bootstrapping": "gate_bootstrapping_per_operation",
+  "tfheVersion": "1.8"
 }
 ```
 
@@ -120,10 +123,12 @@ The server listens on port `3001` by default; override with `PORT`:
 PORT=8080 cargo run --release
 ```
 
-> The `tfhe` crate is built with the `x86_64-unix` feature and targets
-> Linux/macOS on x86-64. On other platforms (e.g. Windows), use the Docker image
-> or the included dev container. First build compiles TFHE-rs and takes
-> 5–10 minutes; subsequent builds are incremental.
+> The primary TFHE-rs 1.8 runtime selects its platform backend at compile time.
+> This service disables its optional AVX-512 default so the binary remains
+> portable across Render's x86-64 hosts and local Arm64 development machines.
+> A target-specific TFHE-rs 0.8 compatibility runtime supports rolling upgrades.
+> Rust 1.91.1 or newer is required. The first build takes 5–10 minutes;
+> subsequent builds are incremental.
 
 ### With Docker
 
