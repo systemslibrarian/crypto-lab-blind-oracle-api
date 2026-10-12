@@ -20,6 +20,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `healthCheckPath` in `render.yaml`.
 
 ### Changed
+- The compute wire format now uses TFHE's versioned, size-limited safe
+  serialization. Legacy raw-bincode requests remain accepted during the rolling
+  browser upgrade, and responses preserve the request's format.
 - Error responses now distinguish base64 / server-key / ciphertext failures
   instead of returning a single generic message.
 - Dockerfile now caches the dependency build layer, runs as a non-root user, and
