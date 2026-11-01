@@ -9,6 +9,13 @@ env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
 
+# Least privilege by default. build-and-test only checks out and builds, and
+# docker builds with push: false, so neither needs more than read.
+# dependabot-auto-merge declares its own block below and is unaffected: a
+# job-level block replaces this default rather than merging with it.
+permissions:
+  contents: read
+
 jobs:
   build-and-test:
     name: fmt, clippy, build, test
