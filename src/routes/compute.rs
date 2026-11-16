@@ -88,6 +88,13 @@ const CACHE_TTL_SECS: u64 = 600; // 10 minutes
 const SERVER_KEY_SIZE_LIMIT: u64 = 96 * 1024 * 1024;
 const CIPHERTEXT_SIZE_LIMIT: u64 = 16 * 1024 * 1024;
 
+/// Value of the `bootstrapping` field in every response that reports it
+/// (`/health` and `/compute/add`). This service uses TFHE's integer API, where
+/// each `FheUint8` block operation runs a *programmable* bootstrap. Gate
+/// bootstrapping is TFHE's boolean-circuit API and is not used here. The
+/// browser client keys its display off this exact string.
+pub const BOOTSTRAPPING_MODE: &str = "programmable_bootstrapping_per_operation";
+
 fn deserialize_server_key_08(
     bytes: &[u8],
 ) -> Result<(CompressedServerKey08, WireFormat08), String> {
@@ -287,7 +294,7 @@ fn preview(b64: &str) -> &str {
 }
 
 /// Core FHE computation: deserialize two `FheUint8` ciphertexts, add them with
-/// gate bootstrapping, and serialize the encrypted result.
+/// programmable bootstrapping, and serialize the encrypted result.
 ///
 /// This function is intentionally free of HTTP/async concerns so it can be unit
 /// tested directly against real TFHE keys.
@@ -325,14 +332,15 @@ fn fhe_add(
 /// POST /compute/add
 ///
 /// Receives two base64-encoded `FheUint8` ciphertexts and a base64-encoded
-/// compressed `ServerKey`. Performs gate-bootstrapped homomorphic addition and
-/// returns the encrypted result.
+/// compressed `ServerKey`. Performs programmable-bootstrapped homomorphic
+/// addition and returns the encrypted result.
 ///
 /// The server never holds a `ClientKey` and cannot decrypt any ciphertext.
 ///
 /// Performance notes:
 /// - ServerKey deserialization: 1-5 seconds (cached after first use per key).
-/// - FheUint8 addition with gate bootstrapping: 100ms-2s depending on hardware.
+/// - FheUint8 addition with programmable bootstrapping: 100ms-2s depending on
+///   hardware.
 /// - FheUint8 range: 0-255; addition wraps modulo 256 on overflow.
 #[tracing::instrument(skip_all)]
 pub async fn compute_add(
@@ -392,7 +400,7 @@ pub async fn compute_add(
         operation: "tfhe_fhe_add".to_string(),
         plaintext_accessed: false,
         scheme: "TFHE-rs".to_string(),
-        bootstrapping: "gate_bootstrapping_per_operation".to_string(),
+        bootstrapping: BOOTSTRAPPING_MODE.to_string(),
         tfhe_version: version.as_str().to_string(),
     }))
 }
@@ -601,6 +609,51 @@ mod tests {
                 ..
             }
         ));
+    }
+
+    // Regression lock for the response label. The browser client renders this
+    // string verbatim, so it must stay `programmable_bootstrapping_per_operation`
+    // under the key `bootstrapping`. Reverting either the constant or the key
+    // name fails this test.
+    #[tokio::test]
+    async fn compute_response_reports_programmable_bootstrapping() {
+        assert_eq!(
+            BOOTSTRAPPING_MODE,
+            "programmable_bootstrapping_per_operation"
+        );
+
+        let (client_key, _) = test_keys_18();
+        let server_key_b64 = BASE64.encode(serialize_server_key_18(&CompressedServerKey18::new(
+            &client_key,
+        )));
+
+        let result = compute_add(
+            State(Arc::new(AppState::new())),
+            Json(ComputeRequest {
+                server_key: server_key_b64,
+                ct_a: BASE64.encode(encrypt_bytes_18(3, &client_key)),
+                ct_b: BASE64.encode(encrypt_bytes_18(4, &client_key)),
+                tfhe_version: Some("1.8".to_string()),
+            }),
+        )
+        .await;
+
+        let response = match result {
+            Ok(Json(response)) => response,
+            Err((status, Json(error))) => {
+                panic!(
+                    "compute_add rejected real 1.8 keys: {status} {}",
+                    error.error
+                )
+            }
+        };
+
+        let body = serde_json::to_value(&response).unwrap();
+        assert_eq!(
+            body.get("bootstrapping").and_then(|v| v.as_str()),
+            Some("programmable_bootstrapping_per_operation"),
+            "response body was {body}"
+        );
     }
 
     #[test]

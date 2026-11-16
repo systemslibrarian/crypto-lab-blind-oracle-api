@@ -16,7 +16,7 @@ use tower_http::timeout::TimeoutLayer;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
-use routes::compute::{compute_add, AppState};
+use routes::compute::{compute_add, AppState, BOOTSTRAPPING_MODE};
 
 /// Maximum request body size. An FHE `ServerKey` plus two ciphertexts can be
 /// tens of megabytes, so the limit is generous but bounded to prevent abuse.
@@ -149,8 +149,29 @@ async fn health() -> axum::Json<serde_json::Value> {
         "scheme": "TFHE-rs",
         "fhe": true,
         "tfheVersions": ["0.8", "1.8"],
-        "bootstrapping": "gate_bootstrapping_per_operation",
+        "bootstrapping": BOOTSTRAPPING_MODE,
         "expectedComputeMs": "100-2000",
         "serverKeyDeserializeMs": "1000-5000 (cached after first use)"
     }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // `/health` is the cheap endpoint the browser client and the deploy health
+    // check both poll, and it carries the bootstrapping label. Gate
+    // bootstrapping is TFHE's boolean API; this service uses the integer API,
+    // where every `FheUint8` block operation runs a programmable bootstrap.
+    // This test fails if the value reverts or the key is renamed.
+    #[tokio::test]
+    async fn health_reports_programmable_bootstrapping() {
+        let axum::Json(body) = health().await;
+
+        assert_eq!(
+            body.get("bootstrapping").and_then(|v| v.as_str()),
+            Some("programmable_bootstrapping_per_operation"),
+            "health body was {body}"
+        );
+    }
 }

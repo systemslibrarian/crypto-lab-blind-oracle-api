@@ -14,7 +14,7 @@ pub struct FheContext {
 
 pub fn init() -> FheContext {
     tracing::info!("TFHE-rs 0.8 compatibility and 1.8 native bindings ready");
-    tracing::info!("scheme: TFHE with gate bootstrapping");
+    tracing::info!("scheme: TFHE with programmable bootstrapping");
     tracing::info!("ServerKey: received per-request from client");
     tracing::info!("ClientKey: never held by this server");
     FheContext { ready: true }

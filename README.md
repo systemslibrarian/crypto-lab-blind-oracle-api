@@ -13,8 +13,8 @@ decrypt, because the decryption key never leaves the browser.
 
 The browser client generates a TFHE key pair, encrypts two 8-bit integers, and
 sends the two ciphertexts plus an *evaluation key* (`ServerKey`) to this API.
-The server computes the homomorphic sum via gate bootstrapping and returns the
-encrypted result — without ever accessing plaintext. The `ClientKey` (the only
+The server computes the homomorphic sum via programmable bootstrapping and
+returns the encrypted result — without ever accessing plaintext. The `ClientKey` (the only
 key that can decrypt) never leaves the browser, so the server holds only the
 ability to *compute*, never to *read*.
 
@@ -24,9 +24,9 @@ TFHE is a lattice-based FHE scheme with post-quantum security assumptions.
 
 - **Privacy-preserving server-side computation** — a client needs a server to
   compute on its data without revealing the inputs or outputs.
-- **Demonstrating FHE gate bootstrapping** — every `FheUint8` operation resets
-  the noise budget automatically, enabling unlimited computation depth with no
-  manual noise management.
+- **Demonstrating FHE programmable bootstrapping** — every `FheUint8`
+  operation resets the noise budget automatically, enabling unlimited
+  computation depth with no manual noise management.
 - **Blind oracle trust model** — the server holds only an evaluation key and
   never possesses decryption capability.
 - **Post-quantum-secure computation** — TFHE's lattice hardness assumption is
@@ -100,7 +100,7 @@ version as its request.
   "operation": "tfhe_fhe_add",
   "plaintextAccessed": false,        // always false — the server cannot decrypt
   "scheme": "TFHE-rs",
-  "bootstrapping": "gate_bootstrapping_per_operation",
+  "bootstrapping": "programmable_bootstrapping_per_operation",
   "tfheVersion": "1.8"
 }
 ```
