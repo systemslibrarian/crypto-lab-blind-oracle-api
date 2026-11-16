@@ -15,6 +15,14 @@ RUN mkdir src \
 
 # Now build the real sources. Only our crate recompiles on source changes.
 COPY . .
+
+# The commit SHA is baked into the binary by build.rs, which reads this when set
+# and falls back to the re-included .git metadata otherwise. Declared here, after
+# the cached dependency layer and immediately before the layer that stamps it, so
+# a new commit always invalidates that layer and never the dependency build.
+ARG RENDER_GIT_COMMIT=""
+ENV RENDER_GIT_COMMIT=${RENDER_GIT_COMMIT}
+
 RUN touch src/main.rs && cargo build --release
 
 # ---- Runtime stage ----------------------------------------------------------

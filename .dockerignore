@@ -1,6 +1,16 @@
 # Keep the Docker build context small and the build deterministic.
 target/
+# .git stays out of the context, with one exception: build.rs stamps the commit
+# SHA into the binary, and inside the image there is no other way to learn it.
+# Render exposes RENDER_GIT_COMMIT to the build too, but its docs are not
+# explicit about whether that reaches a Dockerfile as a build arg, so the three
+# files below are re-included to make the SHA derivable from the context alone.
+# They are a few hundred bytes; the rest of .git (objects, logs) stays excluded.
 .git/
+!.git/HEAD
+!.git/refs/
+!.git/refs/**
+!.git/packed-refs
 .github/
 .devcontainer/
 node_modules/

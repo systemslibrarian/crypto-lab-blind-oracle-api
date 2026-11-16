@@ -151,7 +151,9 @@ async fn health() -> axum::Json<serde_json::Value> {
         "tfheVersions": ["0.8", "1.8"],
         "bootstrapping": BOOTSTRAPPING_MODE,
         "expectedComputeMs": "100-2000",
-        "serverKeyDeserializeMs": "1000-5000 (cached after first use)"
+        "serverKeyDeserializeMs": "1000-5000 (cached after first use)",
+        "gitCommit": env!("GIT_COMMIT"),
+        "builtAt": env!("BUILT_AT")
     }))
 }
 
@@ -173,5 +175,78 @@ mod tests {
             Some("programmable_bootstrapping_per_operation"),
             "health body was {body}"
         );
+    }
+
+    // The point of these two fields is to tie a live response to the exact
+    // commit that produced the binary, so a placeholder is a failure, not a
+    // degraded success. `build.rs` refuses to emit one, and this test is the
+    // second line of defence: it fails if the SHA is absent, empty, short,
+    // non-hex, or a word like "unknown".
+    #[tokio::test]
+    async fn health_reports_the_build_commit_and_build_time() {
+        let axum::Json(body) = health().await;
+
+        let commit = body
+            .get("gitCommit")
+            .and_then(|v| v.as_str())
+            .unwrap_or_else(|| panic!("health body has no gitCommit string: {body}"));
+
+        assert_eq!(
+            commit.len(),
+            40,
+            "gitCommit must be a full 40-character SHA, got {commit:?}"
+        );
+        assert!(
+            commit.bytes().all(|b| b.is_ascii_hexdigit()),
+            "gitCommit must be hex, got {commit:?}"
+        );
+
+        let built_at = body
+            .get("builtAt")
+            .and_then(|v| v.as_str())
+            .unwrap_or_else(|| panic!("health body has no builtAt string: {body}"));
+
+        let parsed = parse_rfc3339_utc(built_at)
+            .unwrap_or_else(|| panic!("builtAt {built_at:?} is not RFC 3339 UTC"));
+
+        // Guards against a zeroed or epoch-defaulted stamp.
+        assert!(
+            parsed.0 >= 2026,
+            "builtAt {built_at:?} predates this change"
+        );
+    }
+
+    /// Strict `YYYY-MM-DDTHH:MM:SSZ` parser, returning the field values so the
+    /// caller can range-check them. Deliberately rejects offsets other than
+    /// `Z`, since the field is documented as UTC.
+    fn parse_rfc3339_utc(value: &str) -> Option<(u32, u32, u32, u32, u32, u32)> {
+        let bytes = value.as_bytes();
+        if bytes.len() != 20 {
+            return None;
+        }
+        for (index, expected) in [(4, b'-'), (7, b'-'), (10, b'T'), (13, b':'), (16, b':')] {
+            if bytes[index] != expected {
+                return None;
+            }
+        }
+        if bytes[19] != b'Z' {
+            return None;
+        }
+
+        let field = |range: std::ops::Range<usize>| value.get(range)?.parse::<u32>().ok();
+        let year = field(0..4)?;
+        let month = field(5..7)?;
+        let day = field(8..10)?;
+        let hour = field(11..13)?;
+        let minute = field(14..16)?;
+        let second = field(17..19)?;
+
+        let valid = (1..=12).contains(&month)
+            && (1..=31).contains(&day)
+            && hour < 24
+            && minute < 60
+            && second < 60;
+
+        valid.then_some((year, month, day, hour, minute, second))
     }
 }
