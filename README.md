@@ -65,9 +65,26 @@ Service discovery. Returns the service name and available routes.
 ### `GET /health`
 Liveness/readiness probe. Cheap and side-effect free.
 
-```json
-{ "status": "ok", "scheme": "TFHE-rs", "fhe": true, "tfheVersions": ["0.8", "1.8"] }
+```jsonc
+{
+  "status": "ok",
+  "scheme": "TFHE-rs",
+  "fhe": true,
+  "tfheVersions": ["0.8", "1.8"],
+  "bootstrapping": "programmable_bootstrapping_per_operation",
+  "expectedComputeMs": "100-2000",
+  "serverKeyDeserializeMs": "1000-5000 (cached after first use)",
+  "gitCommit": "<40-char SHA>",      // commit this binary was built from
+  "builtAt": "<RFC 3339 UTC>"        // when it was built
+}
 ```
+
+`gitCommit` and `builtAt` are resolved at build time by `build.rs` and compiled
+into the binary, so a live response identifies the exact code serving it. That
+makes a deploy verifiable rather than assumed: compare `gitCommit` against the
+SHA you pushed. Neither value is read at runtime, so neither can drift from the
+binary reporting it, and the build fails rather than emitting a placeholder if
+the commit cannot be determined.
 
 ### `POST /compute/add`
 Homomorphic addition of two encrypted 8-bit integers.
